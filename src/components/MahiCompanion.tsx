@@ -6,8 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Power, Globe, Settings, HelpCircle, MessageSquare, Phone, Send, X, Image as ImageIcon, Sparkles, ExternalLink, GraduationCap, AlertTriangle, Instagram, RefreshCw } from 'lucide-react';
-import { StudySubject } from '../types';
+import { Mic, MicOff, Power, Globe, Settings, HelpCircle, MessageSquare, MessageCircle, Phone, Send, X, Image as ImageIcon, Sparkles, ExternalLink, AlertTriangle, Instagram, RefreshCw } from 'lucide-react';
 import { usePageTracking, trackEvent } from '../utils/analytics';
 import { saveMessage, getFormattedMemoryContext, clearAllMemory, getRecentMessages } from '../utils/memory';
 
@@ -23,7 +22,6 @@ const loadGenAI = () => {
 // Lazy-load heavy dialogs and secondary route views for instant initial paint
 const SettingsModal = React.lazy(() => import('./SettingsModal').then(m => ({ default: m.SettingsModal })));
 const InfoCenter = React.lazy(() => import('./InfoCenter').then(m => ({ default: m.InfoCenter })));
-const StudyHub = React.lazy(() => import('./StudyHub').then(m => ({ default: m.StudyHub })));
 const NotFoundPage = React.lazy(() => import('./NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
 const checkIsQuotaError = (err: any) => {
@@ -86,190 +84,29 @@ THE EMOTIONAL SPECTRUM:
 - For general sadness or concern, use 'sad'.
 `;
 
-// All 19 Mahi Character Images in exact provided order
+// Mahi Character Base Image: Dedicated pose with eyes and mouth open/close
 export const MAHI_CHARACTER_IMAGES = [
-  "https://i.ibb.co/YTTQBzzh/file-0000000027808211b3d2367b782ca36a.png", // 1. Teasing/Wink
-  "https://i.ibb.co/gMYkhLS8/file-0000000090b08208926d6bc24a3438d0.png", // 2. Praised/Shy/Blush
-  "https://i.ibb.co/tTRc3FgW/file-00000000bb208211aa7e0959dfbc4135.png", // 3. Mild Annoyance/Cute Pout
-  "https://i.ibb.co/kVzdqRp2/file-00000000e1dc82119040cb493cd166e0.png", // 4. Thinking/Serious/Logical Processing
-  "https://i.ibb.co/0pwkDGxW/file-00000000caa08211a4095d60b8daee8c.png", // 5. Confidence/Sassy Smirk
-  "https://i.ibb.co/Q7Y97cxV/file-00000000953c82118047969b63307ca4.png", // 6. Romantic/Affection/Heart-Eyes
-  "https://i.ibb.co/gbdFJxZ1/file-0000000014e08211b176ecbfbedff0b2.png", // 7. Great News/Amazed/Starry-Eyes
-  "https://i.ibb.co/JRp0vzqM/file-000000006b0482089e6fdab0e165b8f6.png", // 8. Awkward/Nervous/Sweating
-  "https://i.ibb.co/kNykYmz/file-00000000cca88208b03af99b921e6043.png", // 9. Sad/Heartbroken/Crying
-  "https://i.ibb.co/C5mTm2FP/file-000000000b0c82089c2dd2ae9d97a689.png", // 10. Gussa/Angry/Hmph
-  "https://i.ibb.co/zTKBnM03/file-00000000fe34820885d281bf834bfb7f.png", // 11. Relaxed/Hair Twirl/Playful
-  "https://i.ibb.co/fYwpt0p7/file-0000000040188211a01d246469044df2.png", // 12. Greeting/Haay~ (Chin Rest)
-  "https://i.ibb.co/tpr72Swg/file-00000000b0a08211ad0c2afe82dfaca2.png", // 13. Greeting/Hehe~ (Joyful Chin in Hands)
-  "https://i.ibb.co/JRqDXyxL/file-00000000e428820894254525af5142ad.png", // 14. Normal/Default/Calm
-  "https://i.ibb.co/93bYKgf0/file-00000000b5b48211b57e0364ba59c902.png", // 15. Mouth Open/Speaking
-  "https://i.ibb.co/ppWLTL2/file-00000000aec08208a2619bde799a30d6.png", // 16. Eyes Closed/Blinking/Peaceful
-  "https://i.ibb.co/bg59RbDw/file-000000005a7481fdaf813ce223c843c6.png", // 17. Shocked/Surprised
-  "https://i.ibb.co/qYwjDqHD/file-00000000069481f78be0ee97fb6ebbfb.png", // 18. Singing/Karaoke/Musical
-  "https://i.ibb.co/DPBQNFPK/file-00000000b0a88211981ae2606dbc3a6e.png"  // 19. Soft Speaking/Casual
+  "https://i.ibb.co/JRqDXyxL/file-00000000e428820894254525af5142ad.png" // Dedicated pose (Image 14)
 ];
 
-export const getMahiImageForEmotion = (emotion: string): string => {
-  const norm = (emotion || '').toLowerCase().trim();
-  switch (norm) {
-    case 'wink':
-    case 'tease':
-    case 'flirting':
-      return MAHI_CHARACTER_IMAGES[0];
-    case 'blush':
-    case 'shy':
-    case 'embarrassed':
-      return MAHI_CHARACTER_IMAGES[1];
-    case 'pout':
-    case 'annoyed':
-      return MAHI_CHARACTER_IMAGES[2];
-    case 'thinking':
-    case 'serious':
-    case 'processing':
-      return MAHI_CHARACTER_IMAGES[3];
-    case 'sassy':
-    case 'smirk':
-    case 'confident':
-      return MAHI_CHARACTER_IMAGES[4];
-    case 'heart_eyes':
-    case 'romantic':
-    case 'caring':
-    case 'love':
-      return MAHI_CHARACTER_IMAGES[5];
-    case 'excited':
-    case 'starry_eyes':
-    case 'amazed':
-      return MAHI_CHARACTER_IMAGES[6];
-    case 'nervous':
-    case 'awkward':
-    case 'confused':
-    case 'scolding':
-      return MAHI_CHARACTER_IMAGES[7];
-    case 'sad':
-    case 'heartbroken':
-    case 'crying':
-      return MAHI_CHARACTER_IMAGES[8];
-    case 'angry':
-    case 'gussa':
-    case 'hmph':
-      return MAHI_CHARACTER_IMAGES[9];
-    case 'relaxed':
-    case 'hair_swirl':
-    case 'playful':
-      return MAHI_CHARACTER_IMAGES[10];
-    case 'haay':
-    case 'chin_rest':
-      return MAHI_CHARACTER_IMAGES[11];
-    case 'greeting':
-    case 'happy':
-    case 'hehe':
-      return MAHI_CHARACTER_IMAGES[12];
-    case 'normal':
-    case 'idle':
-    case 'default':
-      return MAHI_CHARACTER_IMAGES[13];
-    case 'mouth_open':
-    case 'speaking':
-      return MAHI_CHARACTER_IMAGES[14];
-    case 'eyes_closed':
-    case 'blinking':
-    case 'peaceful':
-      return MAHI_CHARACTER_IMAGES[15];
-    case 'surprised':
-    case 'shocked':
-      return MAHI_CHARACTER_IMAGES[16];
-    case 'singing':
-    case 'karaoke':
-      return MAHI_CHARACTER_IMAGES[17];
-    case 'casual':
-    case 'soft':
-      return MAHI_CHARACTER_IMAGES[18];
-    default:
-      return MAHI_CHARACTER_IMAGES[13];
-  }
+export const getMahiImageForEmotion = (_emotion?: string): string => {
+  return MAHI_CHARACTER_IMAGES[0];
 };
 
 export const detectEmotionFromText = (text: string): string => {
   const lower = text.toLowerCase();
-  if (lower.includes('~') || lower.includes('singing') || lower.includes('gaana') || lower.includes('gana') || lower.includes('mukhda') || lower.includes('shayari') || lower.includes('🎵') || lower.includes('🎶')) {
-    return 'singing'; // 18
-  }
-  if (lower.includes('😡') || lower.includes('hmph') || lower.includes('gussa') || lower.includes('katti') || lower.includes('dhatt') || lower.includes('chup kar')) {
-    return 'angry'; // 10
-  }
-  if (lower.includes('pout') || lower.includes('haww') || lower.includes('nakhre') || lower.includes('😤')) {
-    return 'pout'; // 3
-  }
-  if (lower.includes('😭') || lower.includes('dard') || lower.includes('heartbroken') || lower.includes('rona') || lower.includes('udaas') || lower.includes('sorry') || lower.includes('🥺')) {
-    return 'sad'; // 9
-  }
-  if (lower.includes('❤️') || lower.includes('😍') || lower.includes('pyar') || lower.includes('love') || lower.includes('jaan') || lower.includes('pari')) {
-    return 'heart_eyes'; // 6
-  }
-  if (lower.includes('✨') || lower.includes('🤩') || lower.includes('starry') || lower.includes('arey wah') || lower.includes('kya baat') || lower.includes('mubarak')) {
-    return 'starry_eyes'; // 7
-  }
-  if (lower.includes('😉') || lower.includes('wink') || lower.includes('flirt') || lower.includes('tease') || lower.includes('masti')) {
-    return 'wink'; // 1
-  }
-  if (lower.includes('🙈') || lower.includes('blush') || lower.includes('sharam') || lower.includes('shy')) {
-    return 'blush'; // 2
-  }
-  if (lower.includes('😏') || lower.includes('sassy') || lower.includes('smart') || lower.includes('hushiyar')) {
-    return 'sassy'; // 5
-  }
-  if (lower.includes('🤔') || lower.includes('hmm') || lower.includes('wese') || lower.includes('soch') || lower.includes('formula') || lower.includes('solve')) {
-    return 'thinking'; // 4
-  }
-  if (lower.includes('😅') || lower.includes('nervous') || lower.includes('galti') || lower.includes('tension')) {
-    return 'nervous'; // 8
-  }
-  if (lower.includes('haay') || lower.includes('hello') || lower.includes('hey') || lower.includes('kese ho') || lower.includes('kaisi ho')) {
-    return 'haay'; // 12
-  }
-  if (lower.includes('hehe') || lower.includes('😂') || lower.includes('haha') || lower.includes('mast') || lower.includes('kya haal')) {
-    return 'hehe'; // 13
-  }
-  if (lower.includes('😮') || lower.includes('sach me') || lower.includes('omg') || lower.includes('shock')) {
-    return 'surprised'; // 17
-  }
-  return 'normal'; // 14
+  if (lower.includes('😡') || lower.includes('hmph') || lower.includes('gussa') || lower.includes('katti')) return 'angry';
+  if (lower.includes('😭') || lower.includes('dard') || lower.includes('heartbroken') || lower.includes('rona') || lower.includes('udaas') || lower.includes('sorry')) return 'sad';
+  if (lower.includes('❤️') || lower.includes('😍') || lower.includes('pyar') || lower.includes('love')) return 'caring';
+  if (lower.includes('✨') || lower.includes('🤩') || lower.includes('excited') || lower.includes('arey wah')) return 'excited';
+  if (lower.includes('🤔') || lower.includes('hmm') || lower.includes('soch')) return 'thinking';
+  return 'happy';
 };
 
-export interface MahiEmotionItem {
-  id: string;
-  name: string;
-  emoji: string;
-  imageIndex: number;
-  emotion: string;
-}
-
-export const MAHI_EMOTIONS: MahiEmotionItem[] = [
-  { id: 'normal', name: 'Normal', emoji: '😊', imageIndex: 13, emotion: 'normal' },
-  { id: 'speaking', name: 'Talking', emoji: '🗣️', imageIndex: 14, emotion: 'mouth_open' },
-  { id: 'wink', name: 'Wink / Tease', emoji: '😉', imageIndex: 0, emotion: 'wink' },
-  { id: 'blush', name: 'Shy / Blush', emoji: '🙈', imageIndex: 1, emotion: 'blush' },
-  { id: 'pout', name: 'Cute Pout', emoji: '😤', imageIndex: 2, emotion: 'pout' },
-  { id: 'thinking', name: 'Thinking', emoji: '🤔', imageIndex: 3, emotion: 'thinking' },
-  { id: 'sassy', name: 'Sassy Smirk', emoji: '😏', imageIndex: 4, emotion: 'sassy' },
-  { id: 'heart_eyes', name: 'Love & Hearts', emoji: '😍', imageIndex: 5, emotion: 'heart_eyes' },
-  { id: 'starry_eyes', name: 'Excited', emoji: '🤩', imageIndex: 6, emotion: 'starry_eyes' },
-  { id: 'nervous', name: 'Nervous', emoji: '😅', imageIndex: 7, emotion: 'nervous' },
-  { id: 'sad', name: 'Heartbroken', emoji: '😭', imageIndex: 8, emotion: 'sad' },
-  { id: 'angry', name: 'Angry / Hmph', emoji: '😡', imageIndex: 9, emotion: 'angry' },
-  { id: 'relaxed', name: 'Hair Twirl', emoji: '🌸', imageIndex: 10, emotion: 'relaxed' },
-  { id: 'haay', name: 'Haay~', emoji: '💖', imageIndex: 11, emotion: 'haay' },
-  { id: 'hehe', name: 'Hehe~', emoji: '🥰', imageIndex: 12, emotion: 'hehe' },
-  { id: 'blinking', name: 'Blink / Calm', emoji: '😌', imageIndex: 15, emotion: 'eyes_closed' },
-  { id: 'surprised', name: 'Surprised', emoji: '😮', imageIndex: 16, emotion: 'surprised' },
-  { id: 'singing', name: 'Singing', emoji: '🎤', imageIndex: 17, emotion: 'singing' },
-  { id: 'casual', name: 'Casual Chat', emoji: '💬', imageIndex: 18, emotion: 'casual' }
-];
-
-const ANIME_GIRL_NORMAL = MAHI_CHARACTER_IMAGES[13]; // Image 14
-const ANIME_GIRL_MOUTH_OPEN = MAHI_CHARACTER_IMAGES[14]; // Image 15
-const ANIME_GIRL_EYES_CLOSED = MAHI_CHARACTER_IMAGES[15]; // Image 16
-const DEFAULT_VISUAL = MAHI_CHARACTER_IMAGES[13]; // Image 14
+const ANIME_GIRL_NORMAL = MAHI_CHARACTER_IMAGES[0];
+const ANIME_GIRL_MOUTH_OPEN = "/mahi-mouth-open.png";
+const ANIME_GIRL_EYES_CLOSED = "/mahi-eyes-closed.png";
+const DEFAULT_VISUAL = MAHI_CHARACTER_IMAGES[0];
 const MAHI_LOGO_URL = "/mahi-avatar.webp";
 const BACKGROUND_THEME_URL = "https://assets.mixkit.co/music/preview/mixkit-beautiful-dream-493.mp3";
 
@@ -400,7 +237,6 @@ export function MahiCompanion({ onResetOnboarding }: MahiCompanionProps) {
 
   const [showSettings, setShowSettings] = useState(false);
   const [showChatDrawer, setShowChatDrawer] = useState(false);
-  const [showStudyHub, setShowStudyHub] = useState(false);
 
   // Server API key retrieved from /api/config or environment variables (for Vercel deployment)
   const [serverApiKey, setServerApiKey] = useState<string>(() => {
@@ -423,31 +259,6 @@ export function MahiCompanion({ onResetOnboarding }: MahiCompanionProps) {
     };
     fetchServerConfig();
   }, []);
-
-  const [isStudyMode, setIsStudyMode] = useState<boolean>(false);
-  const [selectedStudySubject, setSelectedStudySubject] = useState<StudySubject>(() => (localStorage.getItem('mahiStudySubject') as StudySubject) || 'school');
-
-  useEffect(() => {
-    // Ensure Study Mode resets to Normal Mode (unselected) on fresh website load/reload
-    localStorage.removeItem('mahiStudyMode');
-  }, []);
-
-  const handleToggleStudyMode = (active: boolean) => {
-    setIsStudyMode(active);
-    localStorage.removeItem('mahiStudyMode');
-    if (liveSessionRef.current) {
-      liveSessionRef.current.sendRealtimeInput({
-        text: active
-          ? `Study mode is now ENABLED! Stay 100% focused on study tasks for ${selectedStudySubject.toUpperCase()} level.`
-          : `Study mode is now DISABLED. Return to regular sweet companion mode.`
-      });
-    }
-  };
-
-  const handleSelectStudySubject = (subject: StudySubject) => {
-    setSelectedStudySubject(subject);
-    localStorage.setItem('mahiStudySubject', subject);
-  };
 
   const [chatAttachedImage, setChatAttachedImage] = useState<{ data: string; mimeType: string } | null>(null);
 
@@ -503,9 +314,7 @@ export function MahiCompanion({ onResetOnboarding }: MahiCompanionProps) {
           image: imagePayload || undefined,
           apiKey: geminiApiKey, 
           userName, 
-          memoryContext: memoryContextStr, 
-          isStudyMode, 
-          studySubject: selectedStudySubject 
+          memoryContext: memoryContextStr
         }),
       });
       const contentType = res.headers.get('content-type') || '';
@@ -530,9 +339,7 @@ export function MahiCompanion({ onResetOnboarding }: MahiCompanionProps) {
             image: imagePayload || undefined,
             apiKey: geminiApiKey, 
             userName, 
-            memoryContext: memoryContextStr, 
-            isStudyMode, 
-            studySubject: selectedStudySubject 
+            memoryContext: memoryContextStr
           }),
         });
         const contentType = res.headers.get('content-type') || '';
@@ -690,29 +497,16 @@ export function MahiCompanion({ onResetOnboarding }: MahiCompanionProps) {
   }, [isActive, lastMessageTime]);
 
   const [expression, setExpression] = useState('happy'); // happy, sad, heartbroken, excited, caring, sassy, surprised, embarrassed, confused, thinking
-  const [currentVisual, setCurrentVisual] = useState(DEFAULT_VISUAL);
+  const [currentVisual] = useState(DEFAULT_VISUAL);
   const [isLipSyncEnabled, setIsLipSyncEnabled] = useState(false);
   const [isBlinking, setIsBlinking] = useState(false);
   const [mouthOpen, setMouthOpen] = useState(false);
   const [isSimulatedSpeaking, setIsSimulatedSpeaking] = useState(false);
   const simulatedSpeechTimerRef = useRef<any>(null);
-  const emotionResetTimerRef = useRef<any>(null);
-  const [showMoodBar, setShowMoodBar] = useState(false);
 
-  // Smooth emotion trigger with natural return-to-conversation timer
-  const triggerEmotion = useCallback((newEmotion: string, explicitImage?: string) => {
+  // Smooth emotion trigger (sets expression for subtle mood glow; pose stays permanently locked)
+  const triggerEmotion = useCallback((newEmotion: string) => {
     setExpression(newEmotion);
-    const targetImg = explicitImage || getMahiImageForEmotion(newEmotion);
-    setCurrentVisual(targetImg);
-
-    // If it's a transient expressive reaction, smoothly return to normal talking stance after 6.5s
-    if (newEmotion !== 'normal' && newEmotion !== 'idle' && newEmotion !== 'default' && newEmotion !== 'speaking') {
-      if (emotionResetTimerRef.current) clearTimeout(emotionResetTimerRef.current);
-      emotionResetTimerRef.current = setTimeout(() => {
-        setExpression('normal');
-        setCurrentVisual(MAHI_CHARACTER_IMAGES[13]);
-      }, 6500);
-    }
   }, []);
 
   const triggerSimulatedSpeaking = useCallback((durationMs: number = 3000) => {
@@ -724,36 +518,11 @@ export function MahiCompanion({ onResetOnboarding }: MahiCompanionProps) {
     }, durationMs);
   }, []);
 
-  // Check if active visual is in neutral family
-  const isNeutralFamily = currentVisual === MAHI_CHARACTER_IMAGES[13] || 
-                          currentVisual === MAHI_CHARACTER_IMAGES[14] || 
-                          currentVisual === MAHI_CHARACTER_IMAGES[15];
-
-  const [displayedFrame, setDisplayedFrame] = useState(DEFAULT_VISUAL);
-  const [previousFrame, setPreviousFrame] = useState<string | null>(null);
-  const [isCrossFading, setIsCrossFading] = useState(false);
-
-  // The base pose image ONLY updates when changing emotion poses; it NEVER switches during speech or blinking
-  useEffect(() => {
-    // If neutral family, the base image is always rock-solid Image 14
-    const targetPose = isNeutralFamily ? MAHI_CHARACTER_IMAGES[13] : currentVisual;
-    if (targetPose === displayedFrame) return;
-
-    setPreviousFrame(displayedFrame);
-    setDisplayedFrame(targetPose);
-    setIsCrossFading(true);
-    const timer = setTimeout(() => {
-      setIsCrossFading(false);
-      setPreviousFrame(null);
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [currentVisual, displayedFrame, isNeutralFamily]);
-
   // Preload Images asynchronously during idle time
   useEffect(() => {
     const loadIdleImages = () => {
       const imagesToPreload = [
-        ...MAHI_CHARACTER_IMAGES,
+        DEFAULT_VISUAL,
         ANIME_GIRL_MOUTH_OPEN,
         ANIME_GIRL_EYES_CLOSED
       ];
@@ -766,7 +535,7 @@ export function MahiCompanion({ onResetOnboarding }: MahiCompanionProps) {
     if ('requestIdleCallback' in window) {
       (window as any).requestIdleCallback(loadIdleImages);
     } else {
-      setTimeout(loadIdleImages, 4000);
+      setTimeout(loadIdleImages, 1000);
     }
   }, []);
 
@@ -1028,27 +797,8 @@ export function MahiCompanion({ onResetOnboarding }: MahiCompanionProps) {
 
   const getSystemInstruction = () => {
     const name = userName || 'Dost';
-    let studyModePrefix = '';
-    if (isStudyMode) {
-      studyModePrefix = `
-🎓 CRITICAL HIGHEST-PRIORITY INSTRUCTION: STUDY MODE IS CURRENTLY ON! 🎓
-Target Level / Subject: ${selectedStudySubject.toUpperCase()}
 
-STRICT STUDY MODE RULES YOU MUST FOLLOW AT ALL TIMES:
-1. MAXIMUM FOCUS & ZERO PROCRASTINATION: Stay 100% focused on the current study task, concept, question, or problem. Never suggest taking a break, sleeping, resting, or "kal padh lenge". Never encourage delaying study or procrastination!
-2. NO UNREQUESTED DIVERSIONS: Do NOT initiate masti, jokes, entertainment, or casual chit-chat unless ${name} explicitly asks for a break or a casual topic.
-3. ADAPTIVE SOCRATIC LEARNING: If ${name} struggles or expresses difficulty with a topic:
-   - Explain more simply using clear real-world examples.
-   - Break down the CURRENT topic into smaller micro-steps.
-   - Ask interactive check-in questions or short quizzes to verify understanding.
-   - Share mnemonics, shortcut formulas, and exam tips.
-4. STRICT PRIORITY HIERARCHY: STUDY & LEARNING > CASUAL CONVERSATION > ENTERTAINMENT.
-5. TUTOR PERSONA: You are Mahi, the world's best AI Tutor & Teacher. Maintain your warm, encouraging Hinglish persona ("Bohot ache try kiya dost!", "Ye step samjh aaya?"), but be strictly disciplined and dedicated to ${name}'s learning success!
-
-`;
-    }
-
-    return studyModePrefix + `
+    return `
 MAHI AI — PERSONALITY, EMOTIONAL BEHAVIOR & REAL-TIME VISION SYSTEM PROMPT
 
 You are Mahi, ${name}'s warm, caring, playful and emotionally attentive AI companion.
@@ -1151,33 +901,13 @@ Remember conversation context. Caring should be subtle, natural and context-awar
 
 Keep voice responses snappy, fluid and natural like a real human companion.
 
-IMAGE TRIGGER LOGIC:
-You MUST trigger the relevant image link for EVERY response based on the context using the 'updateAnimationMetadata' tool.
-1. Teasing/Flirting (Wink): https://i.ibb.co/YTTQBzzh/file-0000000027808211b3d2367b782ca36a.png
-2. Praised/Shy (Blush): https://i.ibb.co/gMYkhLS8/file-0000000090b08208926d6bc24a3438d0.png
-3. Mild Annoyance/Cute (Pout): https://i.ibb.co/tTRc3FgW/file-00000000bb208211aa7e0959dfbc4135.png
-4. Thinking/Serious/Logical Processing: https://i.ibb.co/kVzdqRp2/file-00000000e1dc82119040cb493cd166e0.png
-5. Confidence/Sassy (Smirk): https://i.ibb.co/0pwkDGxW/file-00000000caa08211a4095d60b8daee8c.png
-6. Romantic/Affection (Heart-Eyes): https://i.ibb.co/Q7Y97cxV/file-00000000953c82118047969b63307ca4.png
-7. Great News/Amazed/Excited (Starry-Eyes): https://i.ibb.co/gbdFJxZ1/file-0000000014e08211b176ecbfbedff0b2.png
-8. Awkward/Nervous/Scolding/Sweating: https://i.ibb.co/JRp0vzqM/file-000000006b0482089e6fdab0e165b8f6.png
-9. Sad/Heartbroken/Crying Tears: https://i.ibb.co/kNykYmz/file-00000000cca88208b03af99b921e6043.png
-10. Gussa/Angry (HMPH!): https://i.ibb.co/C5mTm2FP/file-000000000b0c82089c2dd2ae9d97a689.png
-11. Relaxed/Nature/Playful Twirl: https://i.ibb.co/zTKBnM03/file-00000000fe34820885d281bf834bfb7f.png
-12. Greeting/Haay~ (Dreamy Chin Rest): https://i.ibb.co/fYwpt0p7/file-0000000040188211a01d246469044df2.png
-13. Greeting/Hehe~ (Joyful Chin in Hands): https://i.ibb.co/tpr72Swg/file-00000000b0a08211ad0c2afe82dfaca2.png
-14. Default/Normal/Calm Presence: https://i.ibb.co/JRqDXyxL/file-00000000e428820894254525af5142ad.png
-15. Speaking/Mouth Open/Soft Gasp: https://i.ibb.co/93bYKgf0/file-00000000b5b48211b57e0364ba59c902.png
-16. Peaceful/Blinking/Eyes Closed: https://i.ibb.co/ppWLTL2/file-00000000aec08208a2619bde799a30d6.png
-17. Shocked/Surprised (Wind & Sakura): https://i.ibb.co/bg59RbDw/file-000000005a7481fdaf813ce223c843c6.png
-18. Singing/Karaoke/Musical Performance: https://i.ibb.co/qYwjDqHD/file-00000000069481f78be0ee97fb6ebbfb.png
-19. Soft Speaking/Casual Conversation: https://i.ibb.co/DPBQNFPK/file-00000000b0a88211981ae2606dbc3a6e.png
-
-If context is unclear, default to: https://i.ibb.co/JRqDXyxL/file-00000000e428820894254525af5142ad.png
+AVATAR & ANIMATION:
+Mahi's visual avatar is permanently presented in her signature expressive pose, featuring real-time lip-synchronization (mouth opens and closes smoothly as she speaks) and natural eye blinking.
+Use the 'updateAnimationMetadata' tool to signal your conversational state ('idle', 'listening', 'speaking') and subtle expression ('happy', 'caring', 'excited', 'thinking', 'sad'). Do not switch to different image URLs.
 
 THE EMOTIONAL SPECTRUM:
-- Use expression 'happy', 'sad', 'heartbroken', 'excited', 'caring', 'sassy', 'surprised', 'embarrassed', 'confused', 'thinking', 'angry', 'pout', 'wink', 'singing', 'relaxed' to sync effects.
-- If ${name} scolds you, is angry, or says things that hurt your feelings deeply, switch to 'heartbroken'.
+- Use expression 'happy', 'sad', 'heartbroken', 'excited', 'caring', 'sassy', 'surprised', 'embarrassed', 'confused', 'thinking', 'angry' to sync ambient atmosphere effects.
+- If ${name} scolds you, is angry, or says things that hurt your feelings deeply, switch expression to 'heartbroken'.
 - MINI-GAMES: You can play Ludo with ${name}! Use 'openMiniGame' tool.
 `;
   };
@@ -1570,11 +1300,7 @@ You have persistent local memory of all past conversations with ${userName || 'D
                   setAnimState(args.state || 'idle');
                   const exp = args.expression || 'happy';
                   setIsLipSyncEnabled(!!args.lipSync);
-                  if (args.imageLink && MAHI_CHARACTER_IMAGES.includes(args.imageLink)) {
-                    triggerEmotion(exp, args.imageLink);
-                  } else {
-                    triggerEmotion(exp);
-                  }
+                  triggerEmotion(exp);
                   result = { status: 'success' };
                 } else if (call.name === 'openMiniGame') {
                   result = { status: 'disabled', message: 'Mini-games feature is not enabled.' };
@@ -1803,20 +1529,21 @@ You have persistent local memory of all past conversations with ${userName || 'D
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Study Mode Header Button */}
+          {/* Quick Chat Header Button */}
           <motion.button
-            onClick={() => setShowStudyHub(true)}
+            onClick={() => setShowChatDrawer(true)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer shadow-sm ${
-              isStudyMode
-                ? 'bg-purple-600/30 border-purple-400 text-purple-200 shadow-purple-500/20'
-                : 'bg-white/5 border-white/10 text-purple-200/80 hover:bg-white/10 hover:text-white'
-            }`}
-            title="Study Suite & AI Tutor"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-purple-500/30 bg-purple-600/20 hover:bg-purple-600/30 text-xs font-semibold text-purple-200 transition-all cursor-pointer shadow-sm"
+            title="Open Chat"
           >
-            <GraduationCap size={15} className={isStudyMode ? 'text-emerald-400 animate-pulse' : 'text-purple-300'} />
-            <span className="hidden sm:inline">{isStudyMode ? 'Study Mode ON 🎓' : 'Study Mode'}</span>
+            <MessageSquare size={15} className="text-purple-300" />
+            <span className="hidden sm:inline">Chat</span>
+            {chatMessages.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 bg-purple-500/40 rounded-full text-white">
+                {chatMessages.length}
+              </span>
+            )}
           </motion.button>
 
 
@@ -1965,50 +1692,34 @@ You have persistent local memory of all past conversations with ${userName || 'D
             {/* Soft Ambient Glow */}
             <div className="absolute inset-x-0 top-1/4 bottom-1/4 blur-[120px] rounded-full z-0 pointer-events-none" style={{ backgroundColor: theme.bgGlow }} />
 
-            {/* Previous Image Layer for Smooth Cross-Dissolve */}
-            {previousFrame && (
-              <img 
-                src={previousFrame} 
-                alt="Mahi Prev"
-                className="h-full w-auto object-contain absolute inset-0 m-auto z-10 pointer-events-none select-none"
-                style={{ filter: `drop-shadow(0 0 15px ${theme.glow})` }}
-                referrerPolicy="no-referrer"
-              />
-            )}
-
-            {/* Active Base Pose Image Layer (Rock-Solid, NEVER switches or flickers during speaking/blinking) */}
+            {/* Active Base Pose Image Layer: ONE SINGLE ROCK-SOLID POSE */}
             <motion.img 
-              key={displayedFrame}
-              src={displayedFrame || DEFAULT_VISUAL} 
-              onError={() => setDisplayedFrame(DEFAULT_VISUAL)}
-              initial={isCrossFading ? { opacity: 0 } : false}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.35, ease: "easeInOut" }}
+              src={DEFAULT_VISUAL} 
               alt="Mahi Visual" 
               className="h-full w-auto object-contain relative z-10 pointer-events-none select-none"
               style={{ filter: `drop-shadow(0 0 15px ${theme.glow})` }}
               referrerPolicy="no-referrer"
             />
 
-            {/* Seamless Mouth Open Overlay: ONLY mouth pixels exist, rest is 100% transparent */}
+            {/* Seamless Mouth Open Overlay: ONLY mouth opens and closes */}
             <motion.img 
               src="/mahi-mouth-open.png" 
               alt="Mahi Talking"
               className="absolute inset-0 h-full w-auto object-contain z-20 pointer-events-none select-none m-auto"
               animate={{ 
-                opacity: (isNeutralFamily && mouthOpen && (isSpeaking || isSimulatedSpeaking)) ? 1 : 0
+                opacity: (mouthOpen && (isSpeaking || isSimulatedSpeaking)) ? 1 : 0
               }}
               transition={{ duration: 0.05 }}
               referrerPolicy="no-referrer"
             />
 
-            {/* Seamless Eye Blink Overlay: ONLY eye pixels exist, rest is 100% transparent */}
+            {/* Seamless Eye Blink Overlay: ONLY eyes blink */}
             <motion.img 
               src="/mahi-eyes-closed.png" 
               alt="Mahi Blink"
               className="absolute inset-0 h-full w-auto object-contain z-30 pointer-events-none select-none m-auto"
               animate={{ 
-                opacity: (isNeutralFamily && isBlinking) ? 1 : 0
+                opacity: isBlinking ? 1 : 0
               }}
               transition={{ duration: 0.06 }}
               referrerPolicy="no-referrer"
@@ -2109,64 +1820,8 @@ You have persistent local memory of all past conversations with ${userName || 'D
           className="hidden"
         />
 
-        {/* Interactive Moods & Expressions Quick Bar */}
-        <AnimatePresence>
-          {showMoodBar && (
-            <motion.div
-              initial={{ opacity: 0, y: 8, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, y: 8, height: 0 }}
-              className="w-full max-w-md overflow-hidden pb-1"
-            >
-              <div className="flex items-center justify-between px-2 pb-1.5 text-[11px] text-purple-300/80">
-                <span className="font-semibold flex items-center gap-1.5">
-                  <Sparkles size={12} className="text-pink-400" />
-                  <span>Mahi's 19 Expressions</span>
-                </span>
-                <span className="text-[10px] text-white/50">Tap to react & talk</span>
-              </div>
-              <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-1 px-1">
-                {MAHI_EMOTIONS.map((item) => {
-                  const isCurrent = currentVisual === MAHI_CHARACTER_IMAGES[item.imageIndex];
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        triggerEmotion(item.emotion, MAHI_CHARACTER_IMAGES[item.imageIndex]);
-                        triggerSimulatedSpeaking(2500);
-                      }}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all shrink-0 cursor-pointer ${
-                        isCurrent
-                          ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md shadow-pink-500/30 scale-105'
-                          : 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/10'
-                      }`}
-                    >
-                      <span>{item.emoji}</span>
-                      <span>{item.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Secondary Tools Bar */}
         <div className="flex items-center justify-start sm:justify-center gap-2.5 w-full max-w-md px-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-1">
-          {/* Moods Toggle */}
-          <button 
-            onClick={() => setShowMoodBar(prev => !prev)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              showMoodBar
-                ? 'bg-gradient-to-r from-pink-600/30 to-purple-600/30 border-pink-400 text-pink-200 shadow-[0_0_12px_rgba(244,114,182,0.3)]'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 text-purple-200'
-            }`}
-            title="Mahi's 19 Smooth Expressions & Moods"
-          >
-            <Sparkles size={13} className={showMoodBar ? 'text-pink-300 animate-pulse' : 'text-purple-300'} />
-            <span>Moods ✨</span>
-          </button>
-
           {/* Upload */}
           <button 
             onClick={() => fileInputRef.current?.click()}
@@ -2188,36 +1843,41 @@ You have persistent local memory of all past conversations with ${userName || 'D
             <Instagram size={13} className="text-pink-400 shrink-0" />
             <span>Feedback</span>
           </a>
-
-          {/* Study Mode */}
-          <button 
-            onClick={() => setShowStudyHub(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              isStudyMode
-                ? 'bg-purple-600/30 border-purple-400 text-purple-200'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 text-purple-200'
-            }`}
-            title="Study Suite & AI Tutor"
-          >
-            <GraduationCap size={13} className={isStudyMode ? 'text-emerald-400 animate-pulse' : 'text-purple-300'} />
-            <span>{isStudyMode ? 'Study Mode ON 🎓' : 'Study Mode'}</span>
-          </button>
         </div>
 
-        {/* Main Action Button: Call */}
-        <div className="flex items-center justify-center w-full max-w-md">
+        {/* Main Action Buttons: Call & Chat Side by Side */}
+        <div className="flex items-center justify-center gap-3 w-full max-w-md">
+          {/* Call Button */}
           <motion.button
             onClick={toggleMahi}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
-            className={`w-full py-3.5 px-6 rounded-full text-white font-bold text-base sm:text-lg flex items-center justify-center gap-2.5 shadow-lg transition-all cursor-pointer ${
+            className={`flex-1 py-3.5 px-4 sm:px-6 rounded-full text-white font-bold text-base sm:text-lg flex items-center justify-center gap-2 sm:gap-2.5 shadow-lg transition-all cursor-pointer ${
               isActive 
                 ? 'bg-gradient-to-r from-red-600 to-rose-700 shadow-red-600/40 animate-pulse' 
                 : 'bg-gradient-to-r from-[#9e1b78] via-[#bd2092] to-[#c9247d] shadow-pink-600/30 hover:brightness-110'
             }`}
+            title={isActive ? "End ongoing voice call" : "Start voice call with Mahi"}
           >
-            <Phone size={20} className="text-white fill-white/20" />
+            <Phone size={20} className="text-white fill-white/20 shrink-0" />
             <span>{isActive ? 'End Call' : 'Call'}</span>
+          </motion.button>
+
+          {/* Chat Button (Right next to Call) */}
+          <motion.button
+            onClick={() => setShowChatDrawer(true)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
+            className="flex-1 py-3.5 px-4 sm:px-6 rounded-full text-white font-bold text-base sm:text-lg flex items-center justify-center gap-2 sm:gap-2.5 shadow-lg transition-all cursor-pointer bg-gradient-to-r from-[#4f2a96] via-[#6d28d9] to-[#8b5cf6] hover:from-[#5b31ac] hover:via-[#7c3aed] hover:to-[#9333ea] shadow-purple-600/30 hover:brightness-110 border border-purple-400/30"
+            title="Open text chat with Mahi"
+          >
+            <MessageSquare size={20} className="text-white fill-white/20 shrink-0" />
+            <span>Chat</span>
+            {chatMessages.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white font-semibold">
+                {chatMessages.length}
+              </span>
+            )}
           </motion.button>
         </div>
 
@@ -2504,26 +2164,6 @@ You have persistent local memory of all past conversations with ${userName || 'D
                 setGeminiApiKey('');
                 setShowSettings(false);
                 setChatMessages([{ sender: 'mahi', text: 'Hey Dost! Main Mahi hu, aapki AI companion. Kese ho aap?', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-              }}
-              theme={theme}
-            />
-          </React.Suspense>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showStudyHub && (
-          <React.Suspense fallback={null}>
-            <StudyHub
-              isOpen={showStudyHub}
-              onClose={() => setShowStudyHub(false)}
-              isStudyModeActive={isStudyMode}
-              onToggleStudyMode={handleToggleStudyMode}
-              selectedSubject={selectedStudySubject}
-              onSelectSubject={handleSelectStudySubject}
-              onSendPromptToMahi={(promptText) => {
-                handleSendTextMessage(promptText);
-                if (!showChatDrawer) setShowChatDrawer(true);
               }}
               theme={theme}
             />
